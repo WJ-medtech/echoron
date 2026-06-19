@@ -40,7 +40,20 @@
   .mono { font-family: 'JetBrains Mono', monospace; }
   .display { font-family: 'Space Grotesk', sans-serif; }
 
-  .wrap { max-width: 380px; margin: 0 auto; padding: 18px 16px 0; }
+  .wrap {
+    max-width: 380px;
+    margin: 0 auto;
+    padding: 18px 16px 0;
+    min-height: calc(100vh - 70px);
+    display: flex;
+    flex-direction: column;
+  }
+  .center-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
 
   /* 上部モニターバー */
   .statusbar {
@@ -114,37 +127,33 @@
   }
   .scan-progress-label { font-size: 10.5px; color: var(--text-dim); }
 
-  /* メインCTA */
+  /* メインCTA（2つとも同サイズ） */
   .action-row { display: flex; gap: 10px; margin-bottom: 14px; }
-  .cta-solve {
+  .cta-solve, .cta-create {
     flex: 1;
-    background: linear-gradient(180deg, #4ff0d6, #1fb89a);
-    border: none;
     border-radius: 16px;
-    padding: 18px 10px;
-    color: #06231c;
+    padding: 20px 8px;
     text-decoration: none;
     text-align: center;
-    box-shadow: 0 0 0 1px rgba(54,226,196,0.4), 0 8px 20px rgba(54,226,196,0.18);
-    display: block;
-  }
-  .cta-solve .t1 { display:block; font-size: 17px; font-weight: 700; }
-  .cta-solve .t2 { display:block; font-size: 11px; margin-top: 2px; opacity: 0.75; }
-  .cta-create {
-    width: 72px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 4px;
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 10.5px;
   }
-  .cta-create .ic { font-size: 18px; }
+  .cta-solve {
+    background: linear-gradient(180deg, #4ff0d6, #1fb89a);
+    color: #06231c;
+    box-shadow: 0 0 0 1px rgba(54,226,196,0.4), 0 8px 20px rgba(54,226,196,0.18);
+  }
+  .cta-create {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .cta-solve .t1, .cta-create .t1 { font-size: 16px; font-weight: 700; }
+  .cta-solve .t2, .cta-create .t2 { font-size: 10.5px; opacity: 0.75; }
+  .cta-create .t1 { color: var(--text); }
 
   /* 下部固定ナビ */
   .navbar {
@@ -187,6 +196,7 @@
     <a href="settings.html" class="icon-btn" aria-label="設定">⚙</a>
   </div>
 
+  <div class="center-area">
   <a href="mypage.html" class="scan-card" style="text-decoration:none; color:inherit;">
     <div class="scan-ring-wrap">
       <svg viewBox="0 0 168 168">
@@ -206,12 +216,13 @@
   <div class="action-row">
     <a href="solve.html" class="cta-solve">
       <span class="t1 display">診察する</span>
-      <span class="t2">ランダム1問にチャレンジ</span>
+      <span class="t2">ランダム1問</span>
     </a>
     <a href="create.html" class="cta-create">
-      <span class="ic">✎</span>
-      症例作成
+      <span class="t1 display">症例作成</span>
+      <span class="t2">出題する</span>
     </a>
+  </div>
   </div>
 
 </div>
@@ -295,13 +306,13 @@ async function loadProfile() {
   document.getElementById('profile-name').textContent = profile.pen_name;
   document.getElementById('profile-avatar').src = profile.avatar_url || DEFAULT_AVATAR;
 
-  const { data: pointsRow } = await supabaseClient
-    .from('user_points')
-    .select('total_points')
+  const { data: rankRow } = await supabaseClient
+    .from('user_rankings_total')
+    .select('total_score')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  updateRing(pointsRow ? pointsRow.total_points : 0);
+  updateRing(rankRow ? rankRow.total_score : 0);
 }
 
 loadProfile();
