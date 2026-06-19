@@ -5,152 +5,222 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>エコロン</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d1b2a">
+<meta name="theme-color" content="#0a141f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/favicon-32x32.png" sizes="32x32">
 <link rel="icon" href="icons/favicon-16x16.png" sizes="16x16">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+  :root {
+    --bg: #0a141f;
+    --surface: #11212f;
+    --surface-2: #16293a;
+    --line: #1f3a4d;
+    --echo: #36e2c4;
+    --echo-dim: rgba(54,226,196,0.16);
+    --pulse: #ffce6b;
+    --text: #eaf6f4;
+    --text-dim: #5f88a0;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    background: #0d1b2a;
-    color: #e6f1fb;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, rgba(54,226,196,0.07), transparent 60%);
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
-    padding: 20px 16px 40px;
+    padding-bottom: 90px;
   }
-  .wrap { max-width: 380px; margin: 0 auto; }
-  .topbar {
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .display { font-family: 'Space Grotesk', sans-serif; }
+
+  .wrap { max-width: 380px; margin: 0 auto; padding: 18px 16px 0; }
+
+  /* 上部モニターバー */
+  .statusbar {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-bottom: 22px;
   }
-  .topbar .title { font-size: 16px; font-weight: 500; }
-  .icon-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 1px solid #234058;
-    background: #15263b;
+  .statusbar .icon-btn {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .readouts { flex: 1; display: flex; justify-content: center; gap: 14px; }
+  .readout { text-align: center; }
+  .readout .val { font-size: 15px; font-weight: 700; color: var(--echo); }
+  .readout .lbl { font-size: 9px; color: var(--text-dim); letter-spacing: 0.05em; }
+  .divider { width: 1px; background: var(--line); align-self: stretch; }
+
+  /* セクタースキャン プロフィール */
+  .scan-card {
+    position: relative;
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 22px;
+  }
+  .scan-ring-wrap { position: relative; width: 168px; height: 168px; }
+  .scan-ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .scan-ring-bg { fill: none; stroke: var(--line); stroke-width: 8; }
+  .scan-ring-fg {
+    fill: none;
+    stroke: var(--echo);
+    stroke-width: 8;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgba(54,226,196,0.7));
+    transition: stroke-dasharray 0.6s ease;
+  }
+  .scan-avatar {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 108px; height: 108px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--surface-2);
+    background: var(--surface-2);
+  }
+  .scan-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .scan-name { margin: 12px 0 2px; font-size: 15px; font-weight: 600; }
+  .tier-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .scan-progress-label { font-size: 10.5px; color: var(--text-dim); }
+
+  /* メインCTA */
+  .action-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .cta-solve {
+    flex: 1;
+    background: linear-gradient(180deg, #4ff0d6, #1fb89a);
+    border: none;
+    border-radius: 16px;
+    padding: 18px 10px;
+    color: #06231c;
+    text-decoration: none;
+    text-align: center;
+    box-shadow: 0 0 0 1px rgba(54,226,196,0.4), 0 8px 20px rgba(54,226,196,0.18);
+    display: block;
+  }
+  .cta-solve .t1 { display:block; font-size: 17px; font-weight: 700; }
+  .cta-solve .t2 { display:block; font-size: 11px; margin-top: 2px; opacity: 0.75; }
+  .cta-create {
+    width: 72px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #8fb3d4;
+    gap: 4px;
+    color: var(--text-dim);
     text-decoration: none;
-    font-size: 16px;
+    font-size: 10.5px;
   }
-  .profile-card {
-    background: #15263b;
-    border: 1px solid #234058;
-    border-radius: 16px;
-    padding: 20px;
+  .cta-create .ic { font-size: 18px; }
+
+  /* 下部固定ナビ */
+  .navbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 4px calc(10px + env(safe-area-inset-bottom));
+  }
+  .nav-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 16px;
+    gap: 3px;
+    color: var(--text-dim);
     text-decoration: none;
-    color: inherit;
+    font-size: 10px;
   }
-  .profile-card img {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid #234058;
-  }
-  .profile-card .name { font-size: 14px; font-weight: 500; margin: 0; }
-  .profile-card .hint { font-size: 11px; color: #5f8fb8; margin: 0; }
-  .main-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-  .main-btn {
-    border-radius: 16px;
-    padding: 22px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-decoration: none;
-    border: none;
-  }
-  .main-btn.create { background: #1c3b57; color: #85b7eb; }
-  .main-btn.solve { background: #163d33; color: #5dcaa5; }
-  .main-btn .label { font-size: 14px; font-weight: 500; }
-  .main-btn .sub { font-size: 11px; opacity: 0.85; }
-  .sub-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  .sub-btn {
-    background: #15263b;
-    border: 1px solid #234058;
-    border-radius: 10px;
-    padding: 12px 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #cfe3f5;
-    text-decoration: none;
-    font-size: 13px;
-  }
-  .logout {
-    display: block;
-    text-align: center;
-    margin-top: 24px;
-    font-size: 12px;
-    color: #5f8fb8;
-    text-decoration: underline;
-    background: none;
-    border: none;
-    width: 100%;
-    cursor: pointer;
-  }
+  .nav-item .ic { font-size: 18px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <div class="topbar">
+  <div class="statusbar">
     <a href="about.html" class="icon-btn" aria-label="アプリについて・お知らせ">★</a>
-    <div class="title">エコロン</div>
+    <div class="readouts">
+      <div class="readout">
+        <div class="val mono" id="stat-points">--</div>
+        <div class="lbl">POINTS</div>
+      </div>
+      <div class="divider"></div>
+      <div class="readout">
+        <div class="val mono" id="stat-tier">--</div>
+        <div class="lbl">RANK</div>
+      </div>
+    </div>
     <a href="settings.html" class="icon-btn" aria-label="設定">⚙</a>
   </div>
 
-  <a href="mypage.html" class="profile-card">
-    <img id="profile-avatar" src="" alt="プロフィール画像">
-    <p class="name" id="profile-name">読み込み中...</p>
-    <p class="hint">タップでランク・ポイントを表示</p>
+  <a href="mypage.html" class="scan-card" style="text-decoration:none; color:inherit;">
+    <div class="scan-ring-wrap">
+      <svg viewBox="0 0 168 168">
+        <circle class="scan-ring-bg" cx="84" cy="84" r="76"></circle>
+        <circle class="scan-ring-fg" id="scan-ring" cx="84" cy="84" r="76"
+                stroke-dasharray="0 478"></circle>
+      </svg>
+      <div class="scan-avatar">
+        <img id="profile-avatar" src="" alt="プロフィール画像">
+      </div>
+    </div>
+    <p class="scan-name" id="profile-name">読み込み中...</p>
+    <span class="tier-chip" id="tier-chip">-</span>
+    <p class="scan-progress-label" id="progress-label">読み込み中...</p>
   </a>
 
-  <div class="main-grid">
-    <a href="create.html" class="main-btn create">
-      <span class="label">症例作成</span>
-      <span class="sub">出題する</span>
+  <div class="action-row">
+    <a href="solve.html" class="cta-solve">
+      <span class="t1 display">診察する</span>
+      <span class="t2">ランダム1問にチャレンジ</span>
     </a>
-    <a href="solve.html" class="main-btn solve">
-      <span class="label">診察する</span>
-      <span class="sub">ランダム1問</span>
+    <a href="create.html" class="cta-create">
+      <span class="ic">✎</span>
+      症例作成
     </a>
   </div>
 
-  <div class="sub-grid">
-    <a href="ranking.html" class="sub-btn">ランキング</a>
-    <a href="mypage.html" class="sub-btn">マイページ</a>
-    <a href="explore.html" class="sub-btn">問題を探す</a>
-    <a href="manabiba.html" class="sub-btn">まなび場</a>
-  </div>
+</div>
 
-  <button class="logout" id="logout-btn">ログアウト</button>
-
+<div class="navbar">
+  <a href="explore.html" class="nav-item"><span class="ic">▤</span>探す</a>
+  <a href="ranking.html" class="nav-item"><span class="ic">▲</span>ランキング</a>
+  <a href="manabiba.html" class="nav-item"><span class="ic">▥</span>まなび場</a>
+  <a href="mypage.html" class="nav-item"><span class="ic">●</span>マイページ</a>
 </div>
 
 <script>
@@ -161,10 +231,48 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
-  <rect width="80" height="80" fill="#234058"/>
-  <rect x="30" y="14" width="20" height="52" fill="#5dcaa5"/>
-  <rect x="14" y="34" width="52" height="20" fill="#5dcaa5"/>
+  <rect width="80" height="80" fill="#16293a"/>
+  <rect x="30" y="14" width="20" height="52" fill="#36e2c4"/>
+  <rect x="14" y="34" width="52" height="20" fill="#36e2c4"/>
 </svg>`);
+
+// 段位の区切り（Supabase側のget_rank_tier関数と揃えてください）
+const TIERS = [
+  { name: 'Bronze',   min: 0,    max: 150,     color: '#c97b46' },
+  { name: 'Silver',   min: 150,  max: 500,     color: '#b9c4cc' },
+  { name: 'Gold',     min: 500,  max: 1200,    color: '#e3b341' },
+  { name: 'Platinum', min: 1200, max: Infinity, color: '#8fe6e0' }
+];
+
+function getTier(points) {
+  return TIERS.find(t => points >= t.min && points < t.max) || TIERS[TIERS.length - 1];
+}
+
+const RING_CIRCUMFERENCE = 2 * Math.PI * 76; // r=76
+
+function updateRing(points) {
+  const tier = getTier(points);
+  const chip = document.getElementById('tier-chip');
+  chip.textContent = tier.name;
+  chip.style.background = tier.color + '26';
+  chip.style.color = tier.color;
+
+  document.getElementById('stat-points').textContent = points;
+  document.getElementById('stat-tier').textContent = tier.name;
+
+  if (tier.max === Infinity) {
+    document.getElementById('scan-ring').setAttribute('stroke-dasharray', `${RING_CIRCUMFERENCE} 0`);
+    document.getElementById('progress-label').textContent = '最高ランクに到達しています';
+    return;
+  }
+  const ratio = (points - tier.min) / (tier.max - tier.min);
+  const len = RING_CIRCUMFERENCE * Math.min(Math.max(ratio, 0), 1);
+  document.getElementById('scan-ring').setAttribute(
+    'stroke-dasharray', `${len} ${RING_CIRCUMFERENCE - len}`
+  );
+  document.getElementById('progress-label').textContent =
+    `次のランクまで ${tier.max - points}pt`;
+}
 
 async function loadProfile() {
   const { data: { user } } = await supabaseClient.auth.getUser();
@@ -172,6 +280,7 @@ async function loadProfile() {
     window.location.href = 'index.html';
     return;
   }
+
   const { data: profile } = await supabaseClient
     .from('profiles')
     .select('pen_name, avatar_url')
@@ -185,12 +294,15 @@ async function loadProfile() {
 
   document.getElementById('profile-name').textContent = profile.pen_name;
   document.getElementById('profile-avatar').src = profile.avatar_url || DEFAULT_AVATAR;
-}
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await supabaseClient.auth.signOut();
-  window.location.href = 'index.html';
-});
+  const { data: pointsRow } = await supabaseClient
+    .from('user_points')
+    .select('total_points')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  updateRing(pointsRow ? pointsRow.total_points : 0);
+}
 
 loadProfile();
 })();
