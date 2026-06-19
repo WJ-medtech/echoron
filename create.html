@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>症例作成 - エコロン</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a141f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" href="icons/favicon-16x16.png" sizes="16x16">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a141f;
+    --surface: #11212f;
+    --surface-2: #16293a;
+    --line: #1f3a4d;
+    --echo: #36e2c4;
+    --echo-dim: rgba(54,226,196,0.16);
+    --pulse: #ffce6b;
+    --danger: #f0997b;
+    --text: #eaf6f4;
+    --text-dim: #5f88a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, rgba(54,226,196,0.07), transparent 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    padding-bottom: 110px;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .display { font-family: 'Space Grotesk', sans-serif; }
+  .wrap { max-width: 380px; margin: 0 auto; padding: 18px 16px 0; }
+
+  /* ヘッダー */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .topbar h1 { font-size: 17px; margin: 0; }
+  .topbar .sub { font-size: 11px; color: var(--text-dim); margin: 2px 0 0; }
+
+  /* セクションカード */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 16px;
+    margin-bottom: 14px;
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .section-num {
+    font-size: 11px;
+    color: var(--echo);
+    letter-spacing: 0.05em;
+  }
+  .section-title {
+    font-size: 14.5px;
+    font-weight: 700;
+  }
+  .section-note {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin: -6px 0 14px;
+    line-height: 1.6;
+  }
+
+  label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+  }
+  label .req { color: var(--pulse); margin-left: 3px; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="url"],
+  textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 14.5px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.6; }
+  input::placeholder, textarea::placeholder { color: var(--text-dim); opacity: 0.7; }
+
+  /* バイタルグリッド */
+  .vitals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .vitals-grid .field { margin-bottom: 0; }
+  .bp-row { display: flex; align-items: center; gap: 6px; }
+  .bp-row span { color: var(--text-dim); font-size: 13px; }
+
+  /* POCUS部位チップ */
+  .site-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .site-chip {
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .site-chip.active {
+    border-color: var(--echo);
+    background: var(--echo-dim);
+    color: var(--echo);
+    box-shadow: 0 0 0 1px rgba(54,226,196,0.3);
+  }
+
+  .finding-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 12px;
+    background: var(--surface-2);
+  }
+  .finding-card .fc-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    color: var(--echo);
+    font-size: 13.5px;
+    font-weight: 700;
+  }
+  .finding-card .fc-head .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--echo);
+    box-shadow: 0 0 6px rgba(54,226,196,0.8);
+    flex-shrink: 0;
+  }
+
+  /* 類義語タグ */
+  .tag-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .tag-input-row input { flex: 1; }
+  .tag-add-btn {
+    flex-shrink: 0;
+    width: 42px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--echo);
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .tag-list { display: flex; flex-wrap: wrap; gap: 7px; }
+  .tag-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 6px 6px 12px;
+    border-radius: 999px;
+    background: var(--echo-dim);
+    color: var(--echo);
+    font-size: 12.5px;
+  }
+  .tag-pill button {
+    border: none;
+    background: transparent;
+    color: var(--echo);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 7px;
+    line-height: 1;
+  }
+
+  /* バッジ選択 */
+  .badge-row { display: flex; gap: 10px; }
+  .badge-check {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .badge-check input { width: 16px; height: 16px; accent-color: var(--echo); flex-shrink: 0; }
+  .badge-check.checked { border-color: var(--echo); color: var(--echo); }
+
+  /* 保存ボタン */
+  .submit-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(180deg, rgba(10,20,31,0) 0%, var(--bg) 35%);
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+  .submit-bar .inner { max-width: 380px; margin: 0 auto; }
+  .btn-save {
+    width: 100%;
+    background: linear-gradient(180deg, #4ff0d6, #1fb89a);
+    border: none;
+    border-radius: 16px;
+    padding: 16px 0;
+    color: #06231c;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px rgba(54,226,196,0.4), 0 8px 20px rgba(54,226,196,0.18);
+  }
+  .btn-save:disabled { opacity: 0.5; cursor: default; }
+
+  .msg { margin-top: 10px; font-size: 12.5px; text-align: center; line-height: 1.6; }
+  .msg.error { color: var(--danger); }
+  .msg.ok { color: var(--echo); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a href="home.html" class="icon-btn" aria-label="ホームに戻る">←</a>
+    <div>
+      <h1 class="display">症例作成</h1>
+      <p class="sub mono">CASE BUILDER — POCUS問題をつくる</p>
+    </div>
+  </div>
+
+  <!-- 1. 基本情報 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">01</span>
+      <span class="section-title">基本情報</span>
+    </div>
+    <div class="field">
+      <label>主訴<span class="req">必須</span></label>
+      <input type="text" id="chief_complaint" placeholder="例: 突然の右下腹部痛">
+    </div>
+    <div class="field">
+      <label>場面設定</label>
+      <textarea id="scenario" placeholder="例: 救急外来。35歳男性、自力歩行で来院。"></textarea>
+    </div>
+    <div class="field">
+      <label>現病歴<span class="req">必須</span></label>
+      <textarea id="history_present_illness" placeholder="発症様式、経過、随伴症状など"></textarea>
+    </div>
+  </div>
+
+  <!-- 2. 病歴情報 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">02</span>
+      <span class="section-title">病歴情報</span>
+    </div>
+    <div class="field">
+      <label>既往歴</label>
+      <textarea id="past_history" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>内服薬</label>
+      <textarea id="medications" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>家族歴</label>
+      <textarea id="family_history" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>生活歴</label>
+      <textarea id="social_history" placeholder="任意"></textarea>
+    </div>
+  </div>
+
+  <!-- 3. 身体所見 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">03</span>
+      <span class="section-title">身体所見</span>
+    </div>
+    <div class="vitals-grid">
+      <div class="field">
+        <label>体温(℃)</label>
+        <input type="number" step="0.1" id="vital_temp" placeholder="36.5">
+      </div>
+      <div class="field">
+        <label>脈拍(回/分)</label>
+        <input type="number" id="vital_hr" placeholder="80">
+      </div>
+      <div class="field">
+        <label>血圧(mmHg)</label>
+        <div class="bp-row">
+          <input type="number" id="vital_bp_sys" placeholder="120">
+          <span>/</span>
+          <input type="number" id="vital_bp_dia" placeholder="70">
+        </div>
+      </div>
+      <div class="field">
+        <label>呼吸数(回/分)</label>
+        <input type="number" id="vital_rr" placeholder="16">
+      </div>
+      <div class="field">
+        <label>SpO2(%)</label>
+        <input type="number" id="vital_spo2" placeholder="98">
+      </div>
+    </div>
+    <div class="field">
+      <label>その他の身体所見</label>
+      <textarea id="physical_general" placeholder="腹部所見、聴診所見など"></textarea>
+    </div>
+  </div>
+
+  <!-- 4. その他情報 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">04</span>
+      <span class="section-title">その他情報</span>
+    </div>
+    <div class="field">
+      <label>嗜好歴</label>
+      <textarea id="other_preference" placeholder="飲酒・喫煙など"></textarea>
+    </div>
+    <div class="field">
+      <label>妊娠出産歴</label>
+      <textarea id="other_pregnancy" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>心電図所見</label>
+      <textarea id="other_ecg" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>画像所見(エコー以外)</label>
+      <textarea id="other_imaging" placeholder="単純X線、CTなど"></textarea>
+    </div>
+  </div>
+
+  <!-- 5. POCUS設定 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">05</span>
+      <span class="section-title">POCUS設定</span>
+    </div>
+    <p class="section-note">正解となる部位を1つ以上タップして選んでください。選んだ部位ごとに所見を入力します。</p>
+    <div class="site-grid" id="site-grid"></div>
+    <div id="finding-cards"></div>
+  </div>
+
+  <!-- 6. 診断 -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">06</span>
+      <span class="section-title">診断</span>
+    </div>
+    <div class="field">
+      <label>最終診断名<span class="req">必須</span></label>
+      <input type="text" id="final_diagnosis" placeholder="例: 急性虫垂炎">
+    </div>
+    <div class="field">
+      <label>類義語(表記ゆれ・別名)</label>
+      <div class="tag-input-row">
+        <input type="text" id="synonym-input" placeholder="例: 虫垂炎">
+        <button type="button" class="tag-add-btn" id="synonym-add">＋</button>
+      </div>
+      <div class="tag-list" id="synonym-list"></div>
+    </div>
+  </div>
+
+  <!-- 7. バッジ -->
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num mono">07</span>
+      <span class="section-title">バッジ</span>
+    </div>
+    <div class="badge-row">
+      <label class="badge-check" id="badge-study-label">
+        <input type="checkbox" id="badge-study" value="勉強会作成">
+        勉強会作成
+      </label>
+      <label class="badge-check" id="badge-doctor-label">
+        <input type="checkbox" id="badge-doctor" value="医師監修">
+        医師監修
+      </label>
+    </div>
+  </div>
+
+  <p class="msg" id="form-msg"></p>
+
+</div>
+
+<div class="submit-bar">
+  <div class="inner">
+    <button class="btn-save display" id="save-btn">この問題を保存する</button>
+  </div>
+</div>
+
+<script>
+(function () {
+const SUPABASE_URL = 'https://orivksorinurtroylafo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dtVfIO94YNYyLAR2K1-WFw_e-hz4jDy';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let sites = [];               // pocus_sitesの全件
+let selectedSiteIds = [];     // 選択中の部位id配列(順序保持)
+const findingTexts = {};      // site_id -> finding_text
+const findingImages = {};     // site_id -> finding_image_url
+let synonyms = [];            // 類義語配列
+
+// ---- 認証チェック ----
+async function init() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) {
+    window.location.href = 'index.html';
+    return;
+  }
+  currentUser = user;
+  await loadSites();
+}
+
+// ---- 部位一覧の取得・チップ描画 ----
+async function loadSites() {
+  const { data, error } = await supabaseClient
+    .from('pocus_sites')
+    .select('id, name, sort_order')
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    showMsg('部位の読み込みに失敗しました: ' + error.message, 'error');
+    return;
+  }
+  sites = data || [];
+  const grid = document.getElementById('site-grid');
+  grid.innerHTML = '';
+  sites.forEach(site => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'site-chip';
+    chip.textContent = site.name;
+    chip.dataset.siteId = site.id;
+    chip.addEventListener('click', () => toggleSite(site));
+    grid.appendChild(chip);
+  });
+}
+
+function toggleSite(site) {
+  const idx = selectedSiteIds.indexOf(site.id);
+  if (idx >= 0) {
+    selectedSiteIds.splice(idx, 1);
+    delete findingTexts[site.id];
+    delete findingImages[site.id];
+  } else {
+    selectedSiteIds.push(site.id);
+  }
+  renderSiteChips();
+  renderFindingCards();
+}
+
+function renderSiteChips() {
+  document.querySelectorAll('.site-chip').forEach(chip => {
+    chip.classList.toggle('active', selectedSiteIds.includes(chip.dataset.siteId));
+  });
+}
+
+function renderFindingCards() {
+  const container = document.getElementById('finding-cards');
+  container.innerHTML = '';
+  selectedSiteIds.forEach(siteId => {
+    const site = sites.find(s => s.id === siteId);
+    if (!site) return;
+    const card = document.createElement('div');
+    card.className = 'finding-card';
+    card.innerHTML =
+      '<div class="fc-head"><span class="dot"></span>' + site.name + 'の所見</div>' +
+      '<div class="field">' +
+        '<label>所見<span class="req">必須</span></label>' +
+        '<textarea data-site-id="' + site.id + '" data-kind="text" placeholder="この部位を当てた時に表示される所見"></textarea>' +
+      '</div>' +
+      '<div class="field">' +
+        '<label>所見画像URL(任意)</label>' +
+        '<input type="url" data-site-id="' + site.id + '" data-kind="image" placeholder="https://...">' +
+      '</div>';
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('textarea[data-kind="text"]').forEach(el => {
+    el.value = findingTexts[el.dataset.siteId] || '';
+    el.addEventListener('input', () => { findingTexts[el.dataset.siteId] = el.value; });
+  });
+  container.querySelectorAll('input[data-kind="image"]').forEach(el => {
+    el.value = findingImages[el.dataset.siteId] || '';
+    el.addEventListener('input', () => { findingImages[el.dataset.siteId] = el.value; });
+  });
+}
+
+// ---- 類義語タグ ----
+function renderSynonyms() {
+  const list = document.getElementById('synonym-list');
+  list.innerHTML = '';
+  synonyms.forEach((syn, i) => {
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill';
+    const label = document.createTextNode(syn);
+    pill.appendChild(label);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', '削除');
+    btn.textContent = '×';
+    btn.addEventListener('click', () => {
+      synonyms.splice(i, 1);
+      renderSynonyms();
+    });
+    pill.appendChild(btn);
+    list.appendChild(pill);
+  });
+}
+
+document.getElementById('synonym-add').addEventListener('click', addSynonym);
+document.getElementById('synonym-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addSynonym(); }
+});
+function addSynonym() {
+  const input = document.getElementById('synonym-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!synonyms.includes(val)) synonyms.push(val);
+  input.value = '';
+  renderSynonyms();
+}
+
+// ---- バッジチェックの見た目 ----
+['badge-study', 'badge-doctor'].forEach(id => {
+  const checkbox = document.getElementById(id);
+  const label = document.getElementById(id + '-label');
+  checkbox.addEventListener('change', () => {
+    label.classList.toggle('checked', checkbox.checked);
+  });
+});
+
+function showMsg(text, type) {
+  const el = document.getElementById('form-msg');
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+}
+
+// ---- 保存処理 ----
+document.getElementById('save-btn').addEventListener('click', async () => {
+  const chiefComplaint = document.getElementById('chief_complaint').value.trim();
+  const historyPresentIllness = document.getElementById('history_present_illness').value.trim();
+  const finalDiagnosis = document.getElementById('final_diagnosis').value.trim();
+
+  if (!chiefComplaint) { showMsg('主訴を入力してください', 'error'); return; }
+  if (!historyPresentIllness) { showMsg('現病歴を入力してください', 'error'); return; }
+  if (!finalDiagnosis) { showMsg('最終診断名を入力してください', 'error'); return; }
+  if (selectedSiteIds.length === 0) { showMsg('POCUS部位を1つ以上選択してください', 'error'); return; }
+
+  for (const siteId of selectedSiteIds) {
+    if (!findingTexts[siteId] || !findingTexts[siteId].trim()) {
+      const site = sites.find(s => s.id === siteId);
+      showMsg('「' + (site ? site.name : '選択した部位') + '」の所見を入力してください', 'error');
+      return;
+    }
+  }
+
+  const saveBtn = document.getElementById('save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = '保存中...';
+
+  const physicalExam = {
+    vitals: {
+      temp: numOrNull('vital_temp'),
+      bp_sys: numOrNull('vital_bp_sys'),
+      bp_dia: numOrNull('vital_bp_dia'),
+      hr: numOrNull('vital_hr'),
+      rr: numOrNull('vital_rr'),
+      spo2: numOrNull('vital_spo2')
+    },
+    general: document.getElementById('physical_general').value.trim() || null
+  };
+
+  const others = {
+    preference: document.getElementById('other_preference').value.trim() || null,
+    pregnancy: document.getElementById('other_pregnancy').value.trim() || null,
+    ecg: document.getElementById('other_ecg').value.trim() || null,
+    imaging: document.getElementById('other_imaging').value.trim() || null
+  };
+
+  const badges = [];
+  if (document.getElementById('badge-study').checked) badges.push('勉強会作成');
+  if (document.getElementById('badge-doctor').checked) badges.push('医師監修');
+
+  const { data: questionRow, error: questionError } = await supabaseClient
+    .from('questions')
+    .insert({
+      author_id: currentUser.id,
+      scenario: document.getElementById('scenario').value.trim() || null,
+      chief_complaint: chiefComplaint,
+      history_present_illness: historyPresentIllness,
+      past_history: document.getElementById('past_history').value.trim() || null,
+      medications: document.getElementById('medications').value.trim() || null,
+      family_history: document.getElementById('family_history').value.trim() || null,
+      social_history: document.getElementById('social_history').value.trim() || null,
+      physical_exam: physicalExam,
+      others: others,
+      final_diagnosis: finalDiagnosis,
+      diagnosis_synonyms: synonyms.length ? synonyms : null,
+      badges: badges.length ? badges : null
+    })
+    .select('id')
+    .single();
+
+  if (questionError) {
+    showMsg('保存に失敗しました: ' + questionError.message, 'error');
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'この問題を保存する';
+    return;
+  }
+
+  const findingRows = selectedSiteIds.map(siteId => ({
+    question_id: questionRow.id,
+    site_id: siteId,
+    finding_text: findingTexts[siteId].trim(),
+    finding_image_url: (findingImages[siteId] || '').trim() || null
+  }));
+
+  const { error: findingsError } = await supabaseClient
+    .from('question_findings')
+    .insert(findingRows);
+
+  if (findingsError) {
+    showMsg('所見の保存に失敗しました: ' + findingsError.message, 'error');
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'この問題を保存する';
+    return;
+  }
+
+  showMsg('保存しました！ホームに戻ります...', 'ok');
+  setTimeout(() => { window.location.href = 'home.html'; }, 1200);
+});
+
+function numOrNull(id) {
+  const v = document.getElementById(id).value;
+  return v === '' ? null : Number(v);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
