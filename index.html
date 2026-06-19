@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>エコロン - ログイン</title>
+
+<!-- PWA設定：ホーム画面に追加した時にアプリっぽく開くための設定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1b2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="エコロン">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" href="icons/favicon-16x16.png" sizes="16x16">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
@@ -115,11 +126,52 @@
   }
   .msg.error { color: #f0997b; }
   .msg.ok { color: #5dcaa5; }
-  .org-list {
-    font-size: 12px;
-    color: #5f8fb8;
-    margin-top: 4px;
+
+  /* ホーム画面追加バナー */
+  #install-banner {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    max-width: 380px;
+    margin: 0 auto;
+    background: #15263b;
+    border: 1px solid #234058;
+    border-radius: 16px;
+    padding: 16px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    z-index: 999;
   }
+  #install-banner.show { display: flex; }
+  #install-banner img {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  #install-banner .text {
+    flex: 1;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #cfe3f5;
+  }
+  #install-banner .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #install-banner button {
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #install-add-btn { background: #1d9e75; color: #fff; }
+  #install-close-btn { background: transparent; color: #8fb3d4; }
 </style>
 </head>
 <body>
@@ -168,11 +220,23 @@
   </div>
 </div>
 
+<!-- ホーム画面に追加する案内バナー -->
+<div id="install-banner">
+  <img src="icons/icon-192x192.png" alt="エコロンアイコン">
+  <div class="text" id="install-text"></div>
+  <div class="actions">
+    <button id="install-add-btn" style="display:none;">追加する</button>
+    <button id="install-close-btn">閉じる</button>
+  </div>
+</div>
+
 <script>
-// ===== ここを自分のSupabase情報に置き換える（今回はすでに入力済み） =====
+(function () {
+
+// ===== Supabase接続設定 =====
 const SUPABASE_URL = 'https://orivksorinurtroylafo.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_dtVfIO94YNYyLAR2K1-WFw_e-hz4jDy';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // アイコン未設定時のデフォルト画像（病院アイコン、SVGをそのまま埋め込み）
 const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
@@ -180,10 +244,8 @@ const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
   <rect width="80" height="80" fill="#234058"/>
   <rect x="30" y="14" width="20" height="52" fill="#5dcaa5"/>
   <rect x="14" y="34" width="52" height="20" fill="#5dcaa5"/>
-  <rect x="30" y="14" width="20" height="52" fill="none"/>
 </svg>`);
 
-// ホーム画面に移動する先（自分のファイル名に合わせて変更してください）
 const HOME_PAGE = 'home.html';
 
 // ---- タブ切り替え ----
@@ -210,7 +272,7 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
     showMsg('signup-msg', 'メールアドレスとパスワード（6文字以上）を入力してください', 'error');
     return;
   }
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { error } = await supabaseClient.auth.signUp({ email, password });
   if (error) {
     showMsg('signup-msg', 'エラー: ' + error.message, 'error');
     return;
@@ -226,7 +288,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
     showMsg('login-msg', 'メールアドレスとパスワードを入力してください', 'error');
     return;
   }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) {
     showMsg('login-msg', 'エラー: ' + error.message, 'error');
     return;
@@ -234,9 +296,8 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   await checkProfileAndProceed(data.user.id);
 });
 
-// ---- プロフィールがあるか確認して、なければ設定画面を出す ----
 async function checkProfileAndProceed(userId) {
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseClient
     .from('profiles')
     .select('id')
     .eq('id', userId)
@@ -254,9 +315,8 @@ async function checkProfileAndProceed(userId) {
   }
 }
 
-// ---- 既存の団体名をオートコンプリート候補に出す ----
 async function loadOrganizations() {
-  const { data } = await supabase.from('organizations').select('name');
+  const { data } = await supabaseClient.from('organizations').select('name');
   const list = document.getElementById('org-options');
   list.innerHTML = '';
   (data || []).forEach(org => {
@@ -266,7 +326,6 @@ async function loadOrganizations() {
   });
 }
 
-// ---- アイコン画像のプレビュー ----
 document.getElementById('profile-avatar').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) {
@@ -274,7 +333,6 @@ document.getElementById('profile-avatar').addEventListener('change', (e) => {
   }
 });
 
-// ---- プロフィール確定 ----
 document.getElementById('profile-btn').addEventListener('click', async () => {
   const penName = document.getElementById('profile-penname').value.trim();
   const orgName = document.getElementById('profile-org').value.trim();
@@ -285,7 +343,7 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
     return;
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) {
     showMsg('profile-msg', 'ログイン状態が確認できませんでした。もう一度ログインしてください。', 'error');
     return;
@@ -293,7 +351,7 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
 
   let organizationId = null;
   if (orgName) {
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseClient
       .from('organizations')
       .select('id')
       .eq('name', orgName)
@@ -302,7 +360,7 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
     if (existing) {
       organizationId = existing.id;
     } else {
-      const { data: created, error: orgError } = await supabase
+      const { data: created, error: orgError } = await supabaseClient
         .from('organizations')
         .insert({ name: orgName })
         .select('id')
@@ -320,7 +378,7 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
   if (file) {
     const ext = file.name.split('.').pop();
     const filePath = `${user.id}/avatar.${ext}`;
-    const { error: uploadError } = await supabase
+    const { error: uploadError } = await supabaseClient
       .storage
       .from('avatars')
       .upload(filePath, file, { upsert: true });
@@ -328,11 +386,11 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
       showMsg('profile-msg', '画像アップロードに失敗しました: ' + uploadError.message, 'error');
       return;
     }
-    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const { data: publicData } = supabaseClient.storage.from('avatars').getPublicUrl(filePath);
     avatarUrl = publicData.publicUrl;
   }
 
-  const { error: profileError } = await supabase.from('profiles').insert({
+  const { error: profileError } = await supabaseClient.from('profiles').insert({
     id: user.id,
     pen_name: penName,
     organization_id: organizationId,
@@ -347,6 +405,67 @@ document.getElementById('profile-btn').addEventListener('click', async () => {
   showMsg('profile-msg', '完了しました！ホーム画面に移動します...', 'ok');
   setTimeout(() => { window.location.href = HOME_PAGE; }, 1000);
 });
+
+// ================== ホーム画面に追加する案内バナー ==================
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+const STORAGE_KEY = 'echoron_install_banner_dismissed';
+let deferredInstallEvent = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallEvent = e;
+  showInstallBannerIfNeeded();
+});
+
+function showInstallBannerIfNeeded() {
+  if (isStandalone()) return;
+  if (localStorage.getItem(STORAGE_KEY) === '1') return;
+
+  const banner = document.getElementById('install-banner');
+  const text = document.getElementById('install-text');
+  const addBtn = document.getElementById('install-add-btn');
+
+  if (isIOS()) {
+    text.textContent = 'ホーム画面に追加すると、アプリのように使えます。共有ボタン（□と↑）をタップ →「ホーム画面に追加」を選んでください。';
+    addBtn.style.display = 'none';
+  } else if (deferredInstallEvent) {
+    text.textContent = 'ホーム画面に追加すると、アプリのように使えます。';
+    addBtn.style.display = 'inline-block';
+  } else {
+    return;
+  }
+  banner.classList.add('show');
+}
+
+document.getElementById('install-add-btn').addEventListener('click', async () => {
+  if (deferredInstallEvent) {
+    deferredInstallEvent.prompt();
+    await deferredInstallEvent.userChoice;
+    deferredInstallEvent = null;
+  }
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem(STORAGE_KEY, '1');
+});
+
+document.getElementById('install-close-btn').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem(STORAGE_KEY, '1');
+});
+
+// iOSはbeforeinstallpromptが発生しないので、少し待ってから案内を出す
+if (isIOS()) {
+  setTimeout(showInstallBannerIfNeeded, 1500);
+}
+
+})();
 </script>
 </body>
 </html>
