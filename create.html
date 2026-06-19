@@ -212,9 +212,10 @@
   }
 
   /* バッジ選択 */
-  .badge-row { display: flex; gap: 10px; }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .badge-check {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 100px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -223,7 +224,8 @@
     border: 1px solid var(--line);
     background: var(--surface-2);
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: 12.5px;
+    white-space: nowrap;
     cursor: pointer;
   }
   .badge-check input { width: 16px; height: 16px; accent-color: var(--echo); flex-shrink: 0; }
@@ -285,6 +287,22 @@
       <span class="section-num mono">01</span>
       <span class="section-title">基本情報</span>
     </div>
+    <div class="vitals-grid">
+      <div class="field">
+        <label>年齢</label>
+        <input type="number" id="patient_age" placeholder="例: 45">
+      </div>
+      <div class="field">
+        <label>性別</label>
+        <select id="patient_gender">
+          <option value="" selected disabled>選択してください</option>
+          <option value="男性">男性</option>
+          <option value="女性">女性</option>
+          <option value="その他">その他</option>
+          <option value="回答なし">回答なし</option>
+        </select>
+      </div>
+    </div>
     <div class="field">
       <label>主訴<span class="req">必須</span></label>
       <input type="text" id="chief_complaint" placeholder="例: 突然の右下腹部痛">
@@ -300,6 +318,10 @@
         <option value="病前救護">病前救護</option>
         <option value="災害">災害</option>
       </select>
+    </div>
+    <div class="field">
+      <label>場面設定の詳細</label>
+      <textarea id="scenario_detail" placeholder="例: 夜間の救急外来。トリアージで緊急度2と判定。"></textarea>
     </div>
     <div class="field">
       <label>現病歴<span class="req">必須</span></label>
@@ -439,6 +461,10 @@
       <span class="section-title">バッジ</span>
     </div>
     <div class="badge-row">
+      <label class="badge-check" id="badge-individual-label">
+        <input type="checkbox" id="badge-individual" value="個人作成">
+        個人作成
+      </label>
       <label class="badge-check" id="badge-study-label">
         <input type="checkbox" id="badge-study" value="勉強会作成">
         勉強会作成
@@ -590,7 +616,7 @@ function addSynonym() {
 }
 
 // ---- バッジチェックの見た目 ----
-['badge-study', 'badge-doctor'].forEach(id => {
+['badge-individual', 'badge-study', 'badge-doctor'].forEach(id => {
   const checkbox = document.getElementById(id);
   const label = document.getElementById(id + '-label');
   checkbox.addEventListener('change', () => {
@@ -640,6 +666,9 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   };
 
   const others = {
+    age: numOrNull('patient_age'),
+    gender: document.getElementById('patient_gender').value || null,
+    scenario_detail: document.getElementById('scenario_detail').value.trim() || null,
     opqrst: document.getElementById('opqrst').value.trim() || null,
     ample: document.getElementById('ample').value.trim() || null,
     history_other: document.getElementById('history_other').value.trim() || null,
