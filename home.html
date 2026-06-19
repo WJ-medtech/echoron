@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エコロン</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1b2a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" href="icons/favicon-16x16.png" sizes="16x16">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0d1b2a;
+    color: #e6f1fb;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    padding: 20px 16px 40px;
+  }
+  .wrap { max-width: 380px; margin: 0 auto; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .topbar .title { font-size: 16px; font-weight: 500; }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #234058;
+    background: #15263b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8fb3d4;
+    text-decoration: none;
+    font-size: 16px;
+  }
+  .profile-card {
+    background: #15263b;
+    border: 1px solid #234058;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .profile-card img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #234058;
+  }
+  .profile-card .name { font-size: 14px; font-weight: 500; margin: 0; }
+  .profile-card .hint { font-size: 11px; color: #5f8fb8; margin: 0; }
+  .main-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .main-btn {
+    border-radius: 16px;
+    padding: 22px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    border: none;
+  }
+  .main-btn.create { background: #1c3b57; color: #85b7eb; }
+  .main-btn.solve { background: #163d33; color: #5dcaa5; }
+  .main-btn .label { font-size: 14px; font-weight: 500; }
+  .main-btn .sub { font-size: 11px; opacity: 0.85; }
+  .sub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .sub-btn {
+    background: #15263b;
+    border: 1px solid #234058;
+    border-radius: 10px;
+    padding: 12px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #cfe3f5;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .logout {
+    display: block;
+    text-align: center;
+    margin-top: 24px;
+    font-size: 12px;
+    color: #5f8fb8;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a href="about.html" class="icon-btn" aria-label="アプリについて・お知らせ">★</a>
+    <div class="title">エコロン</div>
+    <a href="settings.html" class="icon-btn" aria-label="設定">⚙</a>
+  </div>
+
+  <a href="mypage.html" class="profile-card">
+    <img id="profile-avatar" src="" alt="プロフィール画像">
+    <p class="name" id="profile-name">読み込み中...</p>
+    <p class="hint">タップでランク・ポイントを表示</p>
+  </a>
+
+  <div class="main-grid">
+    <a href="create.html" class="main-btn create">
+      <span class="label">症例作成</span>
+      <span class="sub">出題する</span>
+    </a>
+    <a href="solve.html" class="main-btn solve">
+      <span class="label">診察する</span>
+      <span class="sub">ランダム1問</span>
+    </a>
+  </div>
+
+  <div class="sub-grid">
+    <a href="ranking.html" class="sub-btn">ランキング</a>
+    <a href="mypage.html" class="sub-btn">マイページ</a>
+    <a href="explore.html" class="sub-btn">問題を探す</a>
+    <a href="manabiba.html" class="sub-btn">まなび場</a>
+  </div>
+
+  <button class="logout" id="logout-btn">ログアウト</button>
+
+</div>
+
+<script>
+(function () {
+const SUPABASE_URL = 'https://orivksorinurtroylafo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dtVfIO94YNYyLAR2K1-WFw_e-hz4jDy';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <rect width="80" height="80" fill="#234058"/>
+  <rect x="30" y="14" width="20" height="52" fill="#5dcaa5"/>
+  <rect x="14" y="34" width="52" height="20" fill="#5dcaa5"/>
+</svg>`);
+
+async function loadProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) {
+    window.location.href = 'index.html';
+    return;
+  }
+  const { data: profile } = await supabaseClient
+    .from('profiles')
+    .select('pen_name, avatar_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  document.getElementById('profile-name').textContent = profile.pen_name;
+  document.getElementById('profile-avatar').src = profile.avatar_url || DEFAULT_AVATAR;
+}
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await supabaseClient.auth.signOut();
+  window.location.href = 'index.html';
+});
+
+loadProfile();
+})();
+</script>
+</body>
+</html>
