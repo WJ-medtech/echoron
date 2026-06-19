@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エコロン - ログイン</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #0d1b2a;
+    color: #e6f1fb;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 380px;
+    background: #15263b;
+    border-radius: 20px;
+    padding: 28px 24px;
+    border: 1px solid #234058;
+  }
+  h1 {
+    font-size: 20px;
+    text-align: center;
+    margin: 0 0 4px;
+  }
+  .sub {
+    text-align: center;
+    font-size: 13px;
+    color: #8fb3d4;
+    margin: 0 0 24px;
+  }
+  .tabs {
+    display: flex;
+    background: #0d1b2a;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 0;
+    border: none;
+    background: transparent;
+    color: #8fb3d4;
+    border-radius: 9px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .tab-btn.active {
+    background: #1d9e75;
+    color: #ffffff;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  label {
+    display: block;
+    font-size: 13px;
+    color: #8fb3d4;
+    margin: 14px 0 6px;
+  }
+  input[type="email"],
+  input[type="password"],
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #234058;
+    background: #0d1b2a;
+    color: #e6f1fb;
+    font-size: 15px;
+  }
+  input[type="file"] {
+    width: 100%;
+    color: #8fb3d4;
+    font-size: 13px;
+  }
+  .avatar-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 12px auto 4px;
+    display: block;
+    object-fit: cover;
+    background: #0d1b2a;
+    border: 1px solid #234058;
+  }
+  button.submit {
+    width: 100%;
+    margin-top: 20px;
+    padding: 13px 0;
+    border: none;
+    border-radius: 10px;
+    background: #1d9e75;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button.submit:disabled {
+    opacity: 0.5;
+  }
+  .msg {
+    margin-top: 14px;
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .msg.error { color: #f0997b; }
+  .msg.ok { color: #5dcaa5; }
+  .org-list {
+    font-size: 12px;
+    color: #5f8fb8;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>エコロン</h1>
+  <p class="sub">echo clinical reasoning</p>
+
+  <div id="auth-tabs" class="tabs">
+    <button class="tab-btn active" data-tab="login">ログイン</button>
+    <button class="tab-btn" data-tab="signup">新規登録</button>
+  </div>
+
+  <!-- ログイン -->
+  <div id="panel-login" class="panel active">
+    <label>メールアドレス</label>
+    <input type="email" id="login-email" placeholder="you@example.com">
+    <label>パスワード</label>
+    <input type="password" id="login-password" placeholder="••••••••">
+    <button class="submit" id="login-btn">ログイン</button>
+    <p class="msg" id="login-msg"></p>
+  </div>
+
+  <!-- 新規登録 -->
+  <div id="panel-signup" class="panel">
+    <label>メールアドレス</label>
+    <input type="email" id="signup-email" placeholder="you@example.com">
+    <label>パスワード（6文字以上）</label>
+    <input type="password" id="signup-password" placeholder="••••••••">
+    <button class="submit" id="signup-btn">登録する</button>
+    <p class="msg" id="signup-msg"></p>
+  </div>
+
+  <!-- プロフィール設定（初回ログイン時のみ表示） -->
+  <div id="panel-profile" class="panel">
+    <img id="avatar-preview" class="avatar-preview" alt="プレビュー">
+    <label>アイコン画像（任意）</label>
+    <input type="file" id="profile-avatar" accept="image/*">
+    <label>ペンネーム（必須）</label>
+    <input type="text" id="profile-penname" placeholder="例: たろう">
+    <label>所属団体（任意）</label>
+    <input type="text" id="profile-org" list="org-options" placeholder="例: K-PICS">
+    <datalist id="org-options"></datalist>
+    <button class="submit" id="profile-btn">これで始める</button>
+    <p class="msg" id="profile-msg"></p>
+  </div>
+</div>
+
+<script>
+// ===== ここを自分のSupabase情報に置き換える（今回はすでに入力済み） =====
+const SUPABASE_URL = 'https://orivksorinurtroylafo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_dtVfIO94YNYyLAR2K1-WFw_e-hz4jDy';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// アイコン未設定時のデフォルト画像（病院アイコン、SVGをそのまま埋め込み）
+const DEFAULT_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <rect width="80" height="80" fill="#234058"/>
+  <rect x="30" y="14" width="20" height="52" fill="#5dcaa5"/>
+  <rect x="14" y="34" width="52" height="20" fill="#5dcaa5"/>
+  <rect x="30" y="14" width="20" height="52" fill="none"/>
+</svg>`);
+
+// ホーム画面に移動する先（自分のファイル名に合わせて変更してください）
+const HOME_PAGE = 'home.html';
+
+// ---- タブ切り替え ----
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg ' + (type || '');
+}
+
+// ---- 新規登録 ----
+document.getElementById('signup-btn').addEventListener('click', async () => {
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+  if (!email || password.length < 6) {
+    showMsg('signup-msg', 'メールアドレスとパスワード（6文字以上）を入力してください', 'error');
+    return;
+  }
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    showMsg('signup-msg', 'エラー: ' + error.message, 'error');
+    return;
+  }
+  showMsg('signup-msg', '確認メールを送りました。メール内のリンクを押してから、ログインタブでログインしてください。', 'ok');
+});
+
+// ---- ログイン ----
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) {
+    showMsg('login-msg', 'メールアドレスとパスワードを入力してください', 'error');
+    return;
+  }
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    showMsg('login-msg', 'エラー: ' + error.message, 'error');
+    return;
+  }
+  await checkProfileAndProceed(data.user.id);
+});
+
+// ---- プロフィールがあるか確認して、なければ設定画面を出す ----
+async function checkProfileAndProceed(userId) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profile) {
+    window.location.href = HOME_PAGE;
+  } else {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('auth-tabs').style.display = 'none';
+    document.getElementById('panel-profile').classList.add('active');
+    document.getElementById('avatar-preview').src = DEFAULT_AVATAR;
+    loadOrganizations();
+  }
+}
+
+// ---- 既存の団体名をオートコンプリート候補に出す ----
+async function loadOrganizations() {
+  const { data } = await supabase.from('organizations').select('name');
+  const list = document.getElementById('org-options');
+  list.innerHTML = '';
+  (data || []).forEach(org => {
+    const opt = document.createElement('option');
+    opt.value = org.name;
+    list.appendChild(opt);
+  });
+}
+
+// ---- アイコン画像のプレビュー ----
+document.getElementById('profile-avatar').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    document.getElementById('avatar-preview').src = URL.createObjectURL(file);
+  }
+});
+
+// ---- プロフィール確定 ----
+document.getElementById('profile-btn').addEventListener('click', async () => {
+  const penName = document.getElementById('profile-penname').value.trim();
+  const orgName = document.getElementById('profile-org').value.trim();
+  const fileInput = document.getElementById('profile-avatar');
+
+  if (!penName) {
+    showMsg('profile-msg', 'ペンネームを入力してください', 'error');
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    showMsg('profile-msg', 'ログイン状態が確認できませんでした。もう一度ログインしてください。', 'error');
+    return;
+  }
+
+  let organizationId = null;
+  if (orgName) {
+    const { data: existing } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('name', orgName)
+      .maybeSingle();
+
+    if (existing) {
+      organizationId = existing.id;
+    } else {
+      const { data: created, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ name: orgName })
+        .select('id')
+        .single();
+      if (orgError) {
+        showMsg('profile-msg', '団体の登録に失敗しました: ' + orgError.message, 'error');
+        return;
+      }
+      organizationId = created.id;
+    }
+  }
+
+  let avatarUrl = null;
+  const file = fileInput.files[0];
+  if (file) {
+    const ext = file.name.split('.').pop();
+    const filePath = `${user.id}/avatar.${ext}`;
+    const { error: uploadError } = await supabase
+      .storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      showMsg('profile-msg', '画像アップロードに失敗しました: ' + uploadError.message, 'error');
+      return;
+    }
+    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    avatarUrl = publicData.publicUrl;
+  }
+
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: user.id,
+    pen_name: penName,
+    organization_id: organizationId,
+    avatar_url: avatarUrl
+  });
+
+  if (profileError) {
+    showMsg('profile-msg', '登録に失敗しました: ' + profileError.message, 'error');
+    return;
+  }
+
+  showMsg('profile-msg', '完了しました！ホーム画面に移動します...', 'ok');
+  setTimeout(() => { window.location.href = HOME_PAGE; }, 1000);
+});
+</script>
+</body>
+</html>
