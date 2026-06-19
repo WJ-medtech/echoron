@@ -36,7 +36,7 @@
     background-image: radial-gradient(circle at 50% 0%, rgba(54,226,196,0.07), transparent 60%);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
-    padding-bottom: 110px;
+    padding-bottom: 40px;
   }
   .mono { font-family: 'JetBrains Mono', monospace; }
   .display { font-family: 'Space Grotesk', sans-serif; }
@@ -230,13 +230,6 @@
   .badge-check.checked { border-color: var(--echo); color: var(--echo); }
 
   /* 保存ボタン */
-  .submit-bar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: linear-gradient(180deg, rgba(10,20,31,0) 0%, var(--bg) 35%);
-    padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
-  }
-  .submit-bar .inner { max-width: 380px; margin: 0 auto; }
   .btn-save {
     width: 100%;
     background: linear-gradient(180deg, #4ff0d6, #1fb89a);
@@ -248,8 +241,27 @@
     font-weight: 700;
     cursor: pointer;
     box-shadow: 0 0 0 1px rgba(54,226,196,0.4), 0 8px 20px rgba(54,226,196,0.18);
+    margin-top: 4px;
   }
   .btn-save:disabled { opacity: 0.5; cursor: default; }
+
+  select {
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 14.5px;
+    font-family: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 18px) center, calc(100% - 13px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select option { background: var(--surface-2); color: var(--text); }
 
   .msg { margin-top: 10px; font-size: 12.5px; text-align: center; line-height: 1.6; }
   .msg.error { color: var(--danger); }
@@ -279,11 +291,23 @@
     </div>
     <div class="field">
       <label>場面設定</label>
-      <textarea id="scenario" placeholder="例: 救急外来。35歳男性、自力歩行で来院。"></textarea>
+      <select id="scenario">
+        <option value="" selected disabled>選択してください</option>
+        <option value="外来">外来</option>
+        <option value="救急">救急</option>
+        <option value="病棟急変">病棟急変</option>
+        <option value="在宅">在宅</option>
+        <option value="病前救護">病前救護</option>
+        <option value="災害">災害</option>
+      </select>
     </div>
     <div class="field">
       <label>現病歴<span class="req">必須</span></label>
       <textarea id="history_present_illness" placeholder="発症様式、経過、随伴症状など"></textarea>
+    </div>
+    <div class="field">
+      <label>OPQRST(任意)</label>
+      <textarea id="opqrst" placeholder="Onset発症様式／Provocation増悪因子・Palliation緩解因子／Quality性状／Region部位・Radiation放散／Severity強さ／Time時間経過"></textarea>
     </div>
   </div>
 
@@ -308,6 +332,14 @@
     <div class="field">
       <label>生活歴</label>
       <textarea id="social_history" placeholder="任意"></textarea>
+    </div>
+    <div class="field">
+      <label>その他(嗜好歴など)</label>
+      <textarea id="history_other" placeholder="飲酒・喫煙など、上の項目に当てはまらないもの"></textarea>
+    </div>
+    <div class="field">
+      <label>AMPLE(任意)</label>
+      <textarea id="ample" placeholder="Allergiesアレルギー／Medications内服薬／Past illness既往歴／Last meal最終食事／Events受診前の出来事"></textarea>
     </div>
   </div>
 
@@ -345,7 +377,7 @@
     </div>
     <div class="field">
       <label>その他の身体所見</label>
-      <textarea id="physical_general" placeholder="腹部所見、聴診所見など"></textarea>
+      <textarea id="physical_general" placeholder="視診、聴診、打診、触診など"></textarea>
     </div>
   </div>
 
@@ -356,20 +388,16 @@
       <span class="section-title">その他情報</span>
     </div>
     <div class="field">
-      <label>嗜好歴</label>
-      <textarea id="other_preference" placeholder="飲酒・喫煙など"></textarea>
-    </div>
-    <div class="field">
-      <label>妊娠出産歴</label>
-      <textarea id="other_pregnancy" placeholder="任意"></textarea>
-    </div>
-    <div class="field">
       <label>心電図所見</label>
       <textarea id="other_ecg" placeholder="任意"></textarea>
     </div>
     <div class="field">
       <label>画像所見(エコー以外)</label>
       <textarea id="other_imaging" placeholder="単純X線、CTなど"></textarea>
+    </div>
+    <div class="field">
+      <label>その他</label>
+      <textarea id="other_misc" placeholder="妊娠出産歴など、上の項目に当てはまらないもの"></textarea>
     </div>
   </div>
 
@@ -391,7 +419,7 @@
       <span class="section-title">診断</span>
     </div>
     <div class="field">
-      <label>最終診断名<span class="req">必須</span></label>
+      <label>診断名(この時点で最も疑われる)<span class="req">必須</span></label>
       <input type="text" id="final_diagnosis" placeholder="例: 急性虫垂炎">
     </div>
     <div class="field">
@@ -422,14 +450,9 @@
     </div>
   </div>
 
+  <button class="btn-save display" id="save-btn">この問題を保存する</button>
   <p class="msg" id="form-msg"></p>
 
-</div>
-
-<div class="submit-bar">
-  <div class="inner">
-    <button class="btn-save display" id="save-btn">この問題を保存する</button>
-  </div>
 </div>
 
 <script>
@@ -617,10 +640,12 @@ document.getElementById('save-btn').addEventListener('click', async () => {
   };
 
   const others = {
-    preference: document.getElementById('other_preference').value.trim() || null,
-    pregnancy: document.getElementById('other_pregnancy').value.trim() || null,
+    opqrst: document.getElementById('opqrst').value.trim() || null,
+    ample: document.getElementById('ample').value.trim() || null,
+    history_other: document.getElementById('history_other').value.trim() || null,
     ecg: document.getElementById('other_ecg').value.trim() || null,
-    imaging: document.getElementById('other_imaging').value.trim() || null
+    imaging: document.getElementById('other_imaging').value.trim() || null,
+    other: document.getElementById('other_misc').value.trim() || null
   };
 
   const badges = [];
@@ -631,7 +656,7 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     .from('questions')
     .insert({
       author_id: currentUser.id,
-      scenario: document.getElementById('scenario').value.trim() || null,
+      scenario: document.getElementById('scenario').value || null,
       chief_complaint: chiefComplaint,
       history_present_illness: historyPresentIllness,
       past_history: document.getElementById('past_history').value.trim() || null,
